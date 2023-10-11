@@ -1,39 +1,56 @@
-const express=require('express')
+const express = require('express')
+const mongoose = require('mongoose')
+const dotenv = require('dotenv')
 
-const app=express()
-
-const fs=require('fs')
+const app = express()
 app.use(express.json())
 
-
-app.post('/sucess',(req,res)=>{
-var email=req.body.email
-fs.writeFileSync(email+".json",JSON.stringify(req.body))
-res.send('sucess')
+const userSchema = new mongoose.Schema({
+    email: String,
+    password: String,
 })
+const userModel = mongoose.model('contas', userSchema)
 
-app.get('/list',(req,res)=>{
-fs.readdir(__dirname,(err,files)=>{ 
-var newFiles=files.filter(data=>data.includes('.json')) 
-res.send({dados:newFiles})
- })
-})
+if(process.env.NODE_ENV == 'PROD'){
+    dotenv.config({path: './config/.env.prod'})
+}
+
+if(process.env.NODE_ENV == 'DEV'){
+    dotenv.config({path: './config/.env.dev'})
+}
 
 
-app.get('/:email', (req,res)=>{
-var conta=req.params
-var dadosfinais=JSON.parse(fs.readFileSync(conta.email))
-res.send(dadosfinais)
-})
+mongoose.connect(process.env.DB)
+  .then(()=>{
 
-app.delete('/delete/:email',(req,res)=>{
-var dados=req.params.email
-fs.unlinkSync(dados)
-res.send("dados apagados com sucesso")
- })
+    app.post('/get', async (req,res)=>{
+    const usuarioEncontrado = await userModel.findOne(req.body)
+    res.send(usuarioEncontrado)
+    })
 
- app.use((req, res, next) => {
-    res.send({erro: true, msg: "Rota não definida no servidor."})
-});
+    app.post('/create', async (req,res)=>{
+    const usuarioCriado = await userModel.create(req.body)
+    res.send(usuarioCriado)
+    })
 
-app.listen(8080, () => console.log("O servidor está rodando em localhost:8080"))
+    app.put('/put', async (req,res)=>{
+     const {email, password} = req.body 
+    const usuarioAtualizado = await userModel.findOneAndUpdate(
+        {email, password},
+        {email: req.body.newEmail, password: req.body.newPassword})
+
+    res.send(usuarioAtualizado)
+    })
+
+    app.delete('/delete', async (req,res)=>{
+    const usuarioEncontrado = await userModel.findOne(req.body)
+    await modelodeUsuario.deleteOne(req.body, {returnDocument: 'before'})
+    res.send(usuarioEncontrado)
+    })
+
+    app.listen(3030)
+  })
+
+
+
+
